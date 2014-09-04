@@ -3,23 +3,19 @@ package gogd
 // #include <gd_io.h>
 // #cgo LDFLAGS: -lgd
 import "C"
-import "io"
 import "log"
 import "reflect"
 import "unsafe"
 import "os"
+import "io"
 
-type gdio interface {
-	io.Reader
-	io.Writer
-	io.Seeker
-}
+type gdio interface{}
 
 //export gogd_get_c
 func gogd_get_c(ctx *C.gdIOCtx) int {
 	gdio := (*(*gdio)(ctx.data))
 	buf := make([]byte, 1)
-	_, err := gdio.Read(buf)
+	_, err := gdio.(io.Reader).Read(buf)
 	if err != nil {
 		log.Println(err)
 	}
@@ -30,7 +26,7 @@ func gogd_get_c(ctx *C.gdIOCtx) int {
 func gogd_get_buf(ctx *C.gdIOCtx, cbuf unsafe.Pointer, l C.int) int {
 	gdio := (*(*gdio)(ctx.data))
 	buf := GoSliceFromCString((*C.char)(cbuf), int(l))
-	n, err := gdio.Read(buf)
+	n, err := gdio.(io.Reader).Read(buf)
 	if err != nil {
 		log.Println(err)
 		return 0
@@ -42,7 +38,7 @@ func gogd_get_buf(ctx *C.gdIOCtx, cbuf unsafe.Pointer, l C.int) int {
 func gogd_put_buf(ctx *C.gdIOCtx, cbuf unsafe.Pointer, l C.int) int {
 	gdio := (*(*gdio)(ctx.data))
 	buf := GoSliceFromCString((*C.char)(cbuf), int(l))
-	n, err := gdio.Write(buf)
+	n, err := gdio.(io.Writer).Write(buf)
 	if err != nil {
 		log.Println(err)
 		return 0
@@ -54,7 +50,7 @@ func gogd_put_buf(ctx *C.gdIOCtx, cbuf unsafe.Pointer, l C.int) int {
 func gogd_put_c(ctx *C.gdIOCtx, c int) {
 	gdio := (*(*gdio)(ctx.data))
 	buf := []byte{byte(c)}
-	_, err := gdio.Write(buf)
+	_, err := gdio.(io.Writer).Write(buf)
 	if err != nil {
 		log.Println(err)
 	}
@@ -63,7 +59,7 @@ func gogd_put_c(ctx *C.gdIOCtx, c int) {
 //export gogd_seek
 func gogd_seek(ctx *C.gdIOCtx, c int) int {
 	gdio := (*(*gdio)(ctx.data))
-	n, err := gdio.Seek(int64(c), 0)
+	n, err := gdio.(io.Seeker).Seek(int64(c), 0)
 	if err != nil {
 		log.Println(err)
 	}
@@ -73,7 +69,7 @@ func gogd_seek(ctx *C.gdIOCtx, c int) int {
 //export gogd_tell
 func gogd_tell(ctx *C.gdIOCtx) int {
 	gdio := (*(*gdio)(ctx.data))
-	n, err := gdio.Seek(int64(os.SEEK_CUR), 0)
+	n, err := gdio.(io.Seeker).Seek(int64(os.SEEK_CUR), 0)
 	if err != nil {
 		log.Println(err)
 	}
