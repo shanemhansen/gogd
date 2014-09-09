@@ -10,6 +10,12 @@ import "unsafe"
 type Image struct {
 	ptr C.gdImagePtr
 }
+type Point struct {
+	P C.gdPoint
+}
+type PointF struct {
+	P C.gdPointF
+}
 type ImageType int
 
 const (
@@ -192,10 +198,6 @@ func FontCacheShutdown() {
 
 func FTUseFontConfig(flag int) int {
 	return int(C.gdFTUseFontConfig(C.int(flag)))
-}
-
-type Point struct {
-	P C.gdPoint
 }
 
 func (i Image) Polygon(p Point, n, c int) {
@@ -450,4 +452,59 @@ func (i Image) CropThreshold(color uint, threshold float32) Image {
 }
 func (i Image) SetInterpolationMethod(id C.gdInterpolationMethod) int {
 	return int(C.gdImageSetInterpolationMethod(i.ptr, id))
+}
+func (i Image) RotateInterpolated(angle float32, bgcolor int) Image {
+	return newImage(C.gdImageRotateInterpolated(i.ptr, C.float(angle), C.int(bgcolor)))
+}
+
+func AffineApplyToPoint(dst PointF, src PointF, affine [6]float64) int {
+	return int(C.gdAffineApplyToPointF(&dst.P, &src.P, (*C.double)(unsafe.Pointer(&affine[0]))))
+}
+func AffineInvert(dst, src [6]float64) int {
+	return int(C.gdAffineInvert((*C.double)(unsafe.Pointer(&dst[0])), (*C.double)(unsafe.Pointer(&src[0]))))
+}
+func AffineFlip(dst, src [6]float64, fliph, flipv int) int {
+	return int(C.gdAffineFlip((*C.double)(unsafe.Pointer(&dst[0])), (*C.double)(unsafe.Pointer(&src[0])), C.int(fliph), C.int(flipv)))
+}
+func AffineConcat(dst, m1, m2 [6]float64) int {
+	return int(C.gdAffineConcat((*C.double)(unsafe.Pointer(&dst[0])),
+		(*C.double)(unsafe.Pointer(&m1[0])),
+		(*C.double)(unsafe.Pointer(&m2[0]))))
+}
+func AffineIdentity(dst [6]float64) int {
+	return int(C.gdAffineIdentity((*C.double)(unsafe.Pointer(&dst[0]))))
+}
+func AffineScale(dst [6]float64, scalex, scaley float64) int {
+	return int(C.gdAffineScale((*C.double)(unsafe.Pointer(&dst[0])), C.double(scalex), C.double(scaley)))
+}
+func AffineRotate(dst [6]float64, angle float64) int {
+	return int(C.gdAffineRotate((*C.double)(unsafe.Pointer(&dst[0])), C.double(angle)))
+}
+func AffineShearHorizontal(dst [6]float64, angle float64) int {
+	return int(C.gdAffineShearHorizontal((*C.double)(unsafe.Pointer(&dst[0])), C.double(angle)))
+}
+func AffineShearVertical(dst [6]float64, angle float64) int {
+	return int(C.gdAffineShearVertical((*C.double)(unsafe.Pointer(&dst[0])), C.double(angle)))
+}
+func AffineTranslate(dst [6]float64, offsetx, offsety float64) int {
+	return int(C.gdAffineTranslate((*C.double)(unsafe.Pointer(&dst[0])), C.double(offsetx), C.double(offsety)))
+}
+func AffineExpanstion(dst [6]float64) int {
+	return int(C.gdAffineExpansion((*C.double)(unsafe.Pointer(&dst[0]))))
+}
+func AffineRectilinear(dst [6]float64) int {
+	return int(C.gdAffineRectilinear((*C.double)(unsafe.Pointer(&dst[0]))))
+}
+func AffineEqual(dst, src [6]float64) int {
+	return int(C.gdAffineEqual((*C.double)(unsafe.Pointer(&dst[0])), (*C.double)(unsafe.Pointer(&src[0]))))
+}
+func TransformAffineGetImage(dst, src Image, srcArea Rect, affine [6]float64) int {
+	return int(C.gdTransformAffineGetImage(&dst.ptr, src.ptr, &srcArea.r, (*C.double)(unsafe.Pointer(&affine))))
+}
+func TransformAffineCopy(dst Image, dstx, dsty int, src Image, region Rect, affine [6]float64) int {
+	return int(C.gdTransformAffineCopy(dst.ptr, C.int(dstx), C.int(dsty), src.ptr, &region.r,
+		(*C.double)(unsafe.Pointer(&affine[0]))))
+}
+func TransformAffineBoundingBox(src Rect, affine [6]float64, bbox Rect) int {
+	return int(C.gdTransformAffineBoundingBox(&src.r, (*C.double)(unsafe.Pointer(&affine[0])), &bbox.r))
 }
