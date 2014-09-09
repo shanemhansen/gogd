@@ -2,58 +2,72 @@ package main
 
 import (
 	"flag"
-	"github.com/davecheney/profile"
-	"github.com/shanemhansen/gogd"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
+	"strconv"
+
+	"github.com/shanemhansen/gogd"
 )
 
 var addr = flag.String("addr", ":9090", "address to listen on")
-var newimg = gogd.ImageCreateTrueColor(64, 64).Png()
 
-func handle1(w http.ResponseWriter, r *http.Request) {
-	in, err := os.Open("bot.png")
+func handle(w http.ResponseWriter, r *http.Request) {
+	params := r.URL.Query()
+	src := params.Get("url")
+	if src == "" {
+		http.Error(w, "url param is required", http.StatusBadRequest)
+		return
+	}
+	resizeratio, err := strconv.ParseFloat(params.Get("ratio"), 64)
 	if err != nil {
-		panic(err)
-	}
-	defer in.Close()
-	img := gogd.NewPng()
-	if err := img.Read(in); err != nil {
-		log.Println(err)
+		http.Error(w, "bad ratio, please give a number between 0 and 1", http.StatusBadRequest)
 		return
 	}
-	defer img.Destroy()
-	img.CopyResampled(newimg, 0, 0, 0, 0, 64, 64, 128, 128)
-	if err := newimg.Write(w); err != nil {
-		log.Println(err)
-		return
-	}
-}
-func handle2(w http.ResponseWriter, r *http.Request) {
-	buf, err := ioutil.ReadFile("bot.png")
+	resp, err := http.Get(src)
 	if err != nil {
-		log.Println(err)
+		http.Error(w, "unable to get url", http.StatusBadRequest)
 		return
 	}
-	img := gogd.NewPng()
-	if err := img.FromBuffer(buf); err != nil {
-		log.Println(err)
+	var imageio gogd.ImageWriter
+	switch resp.Header.Get("Content-Type") {
+	case "image/png":
+		imageio = new(gogd.PngIO)
+	case "image/jpeg":
+		imageio = &gogd.JpegIO{Quality: 90}
+	case "image/gif":
+		imageio = new(gogd.GifIO)
+	case "image/webp":
+		imageio = &gogd.WebpIO{Quantization: 90}
+	default:
+		http.Error(w, "unsupported image type", http.StatusBadRequest)
 		return
 	}
-	defer img.Destroy()
-	img.CopyResampled(newimg, 0, 0, 0, 0, 64, 64, 128, 128)
-	bufout, err := newimg.ToBuffer()
-	if err != nil {
-		log.Println(err)
+	// load image
+	srcimg := imageio.Decode(resp.Body)
+	if !srcimg.Valid() {
+		http.Error(w, "Unknown error decoding image", http.StatusBadRequest)
 	}
-	w.Write(bufout)
+	defer srcimg.Destroy()
+	width, height := srcimg.Size()
+	newWidth := int(resizeratio * float64(width))
+	newHeight := int(resizeratio * float64(height))
+	// resample
+	dstimg := gogd.ImageCreateTrueColor(newWidth, newHeight)
+	defer dstimg.Destroy()
+	srcimg.CopyResampled(dstimg, 0, 0, 0, 0, newWidth, newHeight, width, height)
+	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+	// optionally add some text
+	msg := params.Get("msg")
+	if msg != "" {
+		font := gogd.FontGetSmall()
+		dstimg.String(font, newWidth/10, newHeight/10, msg, dstimg.ColorAllocate(0, 0, 0))
+	}
+
+	imageio.Encode(dstimg, w)
 }
 func main() {
-	defer profile.Start(profile.CPUProfile).Stop()
-	http.HandleFunc("/1", handle1)
-	http.HandleFunc("/2", handle2)
+	flag.Parse()
+	http.HandleFunc("/", handle)
 	log.Println("listening on ", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

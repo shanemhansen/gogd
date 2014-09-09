@@ -1,6 +1,6 @@
 package gogd
 
-// #include <gd_io.h>
+// #include <gd.h>
 // #cgo LDFLAGS: -lgd
 import "C"
 import "log"
@@ -16,7 +16,7 @@ func gogd_get_c(ctx *C.gdIOCtx) int {
 	gdio := (*(*gdio)(ctx.data))
 	buf := make([]byte, 1)
 	_, err := gdio.(io.Reader).Read(buf)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		log.Println(err)
 	}
 	return int(buf[0])
@@ -27,7 +27,7 @@ func gogd_get_buf(ctx *C.gdIOCtx, cbuf unsafe.Pointer, l C.int) int {
 	gdio := (*(*gdio)(ctx.data))
 	buf := GoSliceFromCString((*C.char)(cbuf), int(l))
 	n, err := gdio.(io.Reader).Read(buf)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		log.Println(err)
 		return 0
 	}
@@ -87,4 +87,21 @@ func GoSliceFromCString(cArray *C.char, size int) []byte {
 	sliceHeader.Len = size
 	sliceHeader.Data = uintptr(unsafe.Pointer(cArray))
 	return *(*[]byte)(unsafe.Pointer(&sliceHeader))
+}
+
+// GoSliceFromCString provides a zero copy interface for returning a go slice backed by a c array.
+func GoSliceFromCStringNull(cArray *C.char) []byte {
+	c := cArray
+	count := 0
+	for *c != 0 {
+		c = (*C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(c)) + 8))
+		count++
+	}
+	return GoSliceFromCString(cArray, count)
+}
+
+//export gogd_error
+func gogd_error(c C.int, msg *C.char, l unsafe.Pointer) {
+	s := GoSliceFromCStringNull(msg)
+	log.Println(string(s))
 }

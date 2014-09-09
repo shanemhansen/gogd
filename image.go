@@ -6,112 +6,107 @@ package gogd
 */
 import "C"
 import "unsafe"
+import "io"
 
 type Image struct {
 	ptr C.gdImagePtr
 }
+
+func (i *Image) Valid() bool {
+	return i != nil && i.ptr != nil
+}
+
 type Point struct {
 	P C.gdPoint
 }
 type PointF struct {
 	P C.gdPointF
 }
-type ImageType int
-
-const (
-	UnkownImageType ImageType = 0
-	Png
-	Gif
-	WBMP
-	Jpeg
-	Webp
-	Tiff
-	Tga
-	Bmp
-	Gd
-	Gd2
-)
-
-type imageMethods struct {
-	Type          ImageType
-	CreateFromCtx func(*IOCtx) Image
-	WriteToCtx    func(Image, *IOCtx)
+type ImageWriter interface {
+	Decode(io.Reader) Image
+	Encode(Image, io.Writer)
 }
-
-var registry map[ImageType]imageMethods
 
 func newImage(d C.gdImagePtr) Image {
 	return Image{ptr: d}
 }
-func init() {
-	methods := []imageMethods{
-		{
-			Png,
-			func(i *IOCtx) Image {
-				return newImage(C.gdImageCreateFromPngCtx(toGdioCtx(i)))
-			},
-			func(i Image, ctx *IOCtx) {
-				C.gdImagePngCtx(i.ptr, toGdioCtx(ctx))
-			},
-		},
-		{
-			Gif,
-			func(i *IOCtx) Image {
-				return newImage(C.gdImageCreateFromGifCtx(toGdioCtx(i)))
-			},
-			func(i Image, ctx *IOCtx) {
-				C.gdImageGifCtx(i.ptr, toGdioCtx(ctx))
-			},
-		},
-		{
-			WBMP,
-			func(i *IOCtx) Image {
-				return newImage(C.gdImageCreateFromWBMPCtx(toGdioCtx(i)))
-			},
-			func(i Image, ctx *IOCtx) {
-				C.gdImageWBMPCtx(i.ptr, 0, toGdioCtx(ctx))
-			},
-		},
-		{
-			Jpeg,
-			func(i *IOCtx) Image {
-				return newImage(C.gdImageCreateFromJpegCtx(toGdioCtx(i)))
-			},
-			func(i Image, ctx *IOCtx) {
-				C.gdImageJpegCtx(i.ptr, toGdioCtx(ctx), 75)
-			},
-		},
-		{
-			Webp,
-			func(i *IOCtx) Image {
-				return newImage(C.gdImageCreateFromWebpCtx(toGdioCtx(i)))
-			},
-			func(i Image, ctx *IOCtx) {
-				C.gdImageWebpCtx(i.ptr, toGdioCtx(ctx), 0)
-			},
-		},
-		{
-			Tiff,
-			func(i *IOCtx) Image {
-				return newImage(C.gdImageCreateFromTiffCtx(toGdioCtx(i)))
-			},
-			func(i Image, ctx *IOCtx) {
-				C.gdImageTiffCtx(i.ptr, toGdioCtx(ctx))
-			},
-		},
-		{
-			Bmp,
-			func(i *IOCtx) Image {
-				return newImage(C.gdImageCreateFromBmpCtx(toGdioCtx(i)))
-			},
-			func(i Image, ctx *IOCtx) {
-				C.gdImageBmpCtx(i.ptr, toGdioCtx(ctx), 0)
-			},
-		},
-	}
-	for _, method := range methods {
-		RegisterMethod(method)
-	}
+
+type PngIO struct{}
+
+func (*PngIO) Decode(w io.Reader) Image {
+	return newImage(C.gdImageCreateFromPngCtx(toGdioCtx(getContext(w))))
+}
+func (*PngIO) Encode(i Image, r io.Writer) {
+	c := getContext(r)
+	C.gdImagePngCtx(i.ptr, toGdioCtx(c))
+}
+
+type GifIO struct{}
+
+func (*GifIO) Decode(w io.Reader) Image {
+	return newImage(C.gdImageCreateFromGifCtx(toGdioCtx(getContext(w))))
+}
+func (*GifIO) Encode(i Image, r io.Writer) {
+	c := getContext(r)
+	C.gdImageGifCtx(i.ptr, toGdioCtx(c))
+}
+
+type WBMPIO struct {
+	ForeGround int
+}
+
+func (*WBMPIO) Decode(w io.Reader) Image {
+	return newImage(C.gdImageCreateFromWBMPCtx(toGdioCtx(getContext(w))))
+}
+func (w *WBMPIO) Encode(i Image, r io.Writer) {
+	c := getContext(r)
+	C.gdImageWBMPCtx(i.ptr, C.int(w.ForeGround), toGdioCtx(c))
+}
+
+type JpegIO struct {
+	Quality int
+}
+
+func (*JpegIO) Decode(w io.Reader) Image {
+	return newImage(C.gdImageCreateFromJpegCtx(toGdioCtx(getContext(w))))
+}
+func (w *JpegIO) Encode(i Image, r io.Writer) {
+	c := getContext(r)
+	C.gdImageJpegCtx(i.ptr, toGdioCtx(c), C.int(w.Quality))
+}
+
+type WebpIO struct {
+	Quantization int
+}
+
+func (*WebpIO) Decode(w io.Reader) Image {
+	return newImage(C.gdImageCreateFromWebpCtx(toGdioCtx(getContext(w))))
+}
+func (w *WebpIO) Encode(i Image, r io.Writer) {
+	c := getContext(r)
+	C.gdImageWebpCtx(i.ptr, toGdioCtx(c), C.int(w.Quantization))
+}
+
+type TiffIO struct{}
+
+func (*TiffIO) Decode(w io.Reader) Image {
+	return newImage(C.gdImageCreateFromTiffCtx(toGdioCtx(getContext(w))))
+}
+func (*TiffIO) Encode(i Image, r io.Writer) {
+	c := getContext(r)
+	C.gdImageTiffCtx(i.ptr, toGdioCtx(c))
+}
+
+type BmpIO struct {
+	Compression int
+}
+
+func (*BmpIO) Decode(w io.Reader) Image {
+	return newImage(C.gdImageCreateFromBmpCtx(toGdioCtx(getContext(w))))
+}
+func (w *BmpIO) Encode(i Image, r io.Writer) {
+	c := getContext(r)
+	C.gdImageBmpCtx(i.ptr, toGdioCtx(c), C.int(w.Compression))
 }
 
 // ImageCreate makes a 256 color image
@@ -122,10 +117,6 @@ func ImageCreate(sx, sy int) Image {
 // ImageCreateTrueColor creates a truecolor image
 func ImageCreateTrueColor(sx, sy int) Image {
 	return newImage(C.gdImageCreateTrueColor(C.int(sx), C.int(sy)))
-}
-
-func RegisterMethod(m imageMethods) {
-	registry[m.Type] = m
 }
 
 func (i Image) SetPixel(x, y, color int) {
@@ -336,6 +327,9 @@ func (i Image) CopyRotated(dst Image, dstx, dsty float64, srcx, srcy, srcw, srch
 
 func (i Image) Clone() Image {
 	return newImage(C.gdImageClone(i.ptr))
+}
+func (i Image) Destroy() {
+	C.gdImageDestroy(i.ptr)
 }
 
 func (i Image) SetBrush(brush Image) {

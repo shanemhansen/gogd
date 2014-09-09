@@ -8,9 +8,17 @@ extern int gogd_get_c(struct gdIOCtx *);
 extern int gogd_get_buf(struct gdIOCtx *, const void*, int);
 extern int gogd_put_c(struct gdIOCtx *, int);
 extern int gogd_put_buf(struct gdIOCtx *, const void*, int);
+extern void gogd_error(int, const char*, va_list);
+void gogd_error_setup() {
+    gdSetErrorMethod(gogd_error);
+}
 */
 import "C"
 import "unsafe"
+
+func init() {
+	C.gogd_error_setup()
+}
 
 // GetContext makes a gdio context
 func getContext(g gdio) *IOCtx {
