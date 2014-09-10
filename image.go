@@ -172,11 +172,11 @@ func (i Image) CharUp(f Font, x, y, c, color int) {
 	C.gdImageCharUp(i.ptr, f, C.int(x), C.int(y), C.int(c), C.int(color))
 }
 func (i Image) String(f Font, x, y int, s string, color int) {
-	str := (*C.uchar)(unsafe.Pointer(CStringFromGoString(s)))
+	str := (*C.uchar)(unsafe.Pointer(cStringFromGoString(s)))
 	C.gdImageString(i.ptr, f, C.int(x), C.int(y), str, C.int(color))
 }
 func (i Image) StringUp(f Font, x, y int, s string, color int) {
-	str := (*C.uchar)(unsafe.Pointer(CStringFromGoString(s)))
+	str := (*C.uchar)(unsafe.Pointer(cStringFromGoString(s)))
 	C.gdImageStringUp(i.ptr, f, C.int(x), C.int(y), str, C.int(color))
 }
 

@@ -13,8 +13,8 @@ func (i Image) SquareToCircle(radius int) Image {
 }
 func (i Image) StringFTCircle(cx, cy int, radius, textRadius, fillPortion float64, font string, points float64, top string, bottom string, fgcolor int) error {
 	err := C.gdImageStringFTCircle(i.ptr, C.int(cx), C.int(cy), C.double(radius),
-		C.double(textRadius), C.double(fillPortion), CStringFromGoString(font),
-		C.double(points), CStringFromGoString(top), CStringFromGoString(bottom),
+		C.double(textRadius), C.double(fillPortion), cStringFromGoString(font),
+		C.double(points), cStringFromGoString(top), cStringFromGoString(bottom),
 		C.int(fgcolor))
 	if err == nil {
 		return nil
@@ -26,7 +26,7 @@ func (i Image) StringFTCircle(cx, cy int, radius, textRadius, fillPortion float6
 		c = (*C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(c)) + 8))
 		count++
 	}
-	msg := GoSliceFromCString(err, count)
+	msg := goSliceFromcString(err, count)
 	// make a copy of msg
 	return errors.New(string(msg))
 }

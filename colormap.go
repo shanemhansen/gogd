@@ -19,7 +19,7 @@ type ColorMap struct {
 
 func ColorMapLookup(colorMap ColorMap, colorName string) *ColorMapEntry {
 	var r, g, b C.int
-	ret := C.gdColorMapLookup(colorMap.colorMap, CStringFromGoString(colorName),
+	ret := C.gdColorMapLookup(colorMap.colorMap, cStringFromGoString(colorName),
 		&r, &g, &b)
 	if ret == 0 {
 		return nil
@@ -27,8 +27,8 @@ func ColorMapLookup(colorMap ColorMap, colorName string) *ColorMapEntry {
 	return &ColorMapEntry{Red: int(r), Green: int(g), Blue: int(b)}
 }
 
-// CStringFromGoString returns a null terminated string
-func CStringFromGoString(data string) *C.char {
+// cStringFromGoString returns a null terminated string
+func cStringFromGoString(data string) *C.char {
 	slice := make([]byte, len(data)+1)
 	for i, c := range []byte(data) {
 		slice[i] = c

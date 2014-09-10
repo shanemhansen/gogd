@@ -25,7 +25,7 @@ func gogd_get_c(ctx *C.gdIOCtx) int {
 //export gogd_get_buf
 func gogd_get_buf(ctx *C.gdIOCtx, cbuf unsafe.Pointer, l C.int) int {
 	gdio := (*(*gdio)(ctx.data))
-	buf := GoSliceFromCString((*C.char)(cbuf), int(l))
+	buf := goSliceFromcString((*C.char)(cbuf), int(l))
 	n, err := gdio.(io.Reader).Read(buf)
 	if err != nil && err != io.EOF {
 		log.Println(err)
@@ -37,7 +37,7 @@ func gogd_get_buf(ctx *C.gdIOCtx, cbuf unsafe.Pointer, l C.int) int {
 //export gogd_put_buf
 func gogd_put_buf(ctx *C.gdIOCtx, cbuf unsafe.Pointer, l C.int) int {
 	gdio := (*(*gdio)(ctx.data))
-	buf := GoSliceFromCString((*C.char)(cbuf), int(l))
+	buf := goSliceFromcString((*C.char)(cbuf), int(l))
 	n, err := gdio.(io.Writer).Write(buf)
 	if err != nil {
 		log.Println(err)
@@ -76,8 +76,8 @@ func gogd_tell(ctx *C.gdIOCtx) int {
 	return int(n)
 }
 
-// GoSliceFromCString provides a zero copy interface for returning a go slice backed by a c array.
-func GoSliceFromCString(cArray *C.char, size int) []byte {
+// goSliceFromcString provides a zero copy interface for returning a go slice backed by a c array.
+func goSliceFromcString(cArray *C.char, size int) []byte {
 	//See http://code.google.com/p/go-wiki/wiki/cgo
 	//It turns out it's really easy to
 	//make a string from a *C.char and vise versa.
@@ -89,19 +89,19 @@ func GoSliceFromCString(cArray *C.char, size int) []byte {
 	return *(*[]byte)(unsafe.Pointer(&sliceHeader))
 }
 
-// GoSliceFromCString provides a zero copy interface for returning a go slice backed by a c array.
-func GoSliceFromCStringNull(cArray *C.char) []byte {
+// goSliceFromcString provides a zero copy interface for returning a go slice backed by a c array.
+func goSliceFromcStringNull(cArray *C.char) []byte {
 	c := cArray
 	count := 0
 	for *c != 0 {
 		c = (*C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(c)) + 8))
 		count++
 	}
-	return GoSliceFromCString(cArray, count)
+	return goSliceFromcString(cArray, count)
 }
 
 //export gogd_error
 func gogd_error(c C.int, msg *C.char, l unsafe.Pointer) {
-	s := GoSliceFromCStringNull(msg)
+	s := goSliceFromcStringNull(msg)
 	log.Println(string(s))
 }

@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"fmt"
 	"github.com/shanemhansen/gogd"
+	"strings"
 )
 
 var addr = flag.String("addr", ":9090", "address to listen on")
@@ -29,7 +31,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var imageio gogd.ImageWriter
-	switch resp.Header.Get("Content-Type") {
+	switch strings.ToLower(resp.Header.Get("Content-Type")) {
 	case "image/png":
 		imageio = new(gogd.PngIO)
 	case "image/jpeg":
@@ -39,7 +41,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	case "image/webp":
 		imageio = &gogd.WebpIO{Quantization: 90}
 	default:
-		http.Error(w, "unsupported image type", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("unsupported image type %s", resp.Header.Get("Content-Type")), http.StatusBadRequest)
 		return
 	}
 	// load image
